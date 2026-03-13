@@ -1,7 +1,7 @@
 import BoardColumn from "./BoardColumn";
 import BoardCard from "./BoardCard";
 import { useTask } from "../../contexts/KanbanContext";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const COLUMNS = [
   { id: "to-do", label: "To-DO" },
@@ -12,15 +12,23 @@ const COLUMNS = [
 const Board = () => {
   const { tasks, searchQuery, sortBy } = useTask();
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [debounceSearch, setDebounceSearch] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebounceSearch(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const processedTasks = useMemo(() => {
     let result = [...tasks];
 
     // 1. Filter by search
-    if (searchQuery) {
-      result = result.filter((t) =>
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
+    if (debounceSearch) {
+      const query = debounceSearch.toLowerCase();
+      result = result.filter((t) => t.title.toLowerCase().includes(query));
     }
 
     result.sort((a, b) => {
@@ -33,10 +41,13 @@ const Board = () => {
     });
 
     return result;
-  }, [tasks, searchQuery, sortBy]);
+  }, [tasks, debounceSearch, sortBy]);
 
   return (
-    <div onClick={() => setActiveMenuId(null)} className="flex-1 p-4 sm:p-6 lg:p-8 min-h-0">
+    <div
+      onClick={() => setActiveMenuId(null)}
+      className="flex-1 p-4 sm:p-6 lg:p-8 min-h-0"
+    >
       <div className="flex flex-col gap-6 xl:flex-row h-full">
         {COLUMNS.map((col) => {
           const columnTasks = processedTasks.filter(
@@ -54,7 +65,11 @@ const Board = () => {
               {columnTasks.map((task) => (
                 <BoardCard
                   isOpen={activeMenuId === task.id}
-                  onToggleMenu={() => setActiveMenuId(prevId => prevId === task.id ? null : task.id)}
+                  onToggleMenu={() =>
+                    setActiveMenuId((prevId) =>
+                      prevId === task.id ? null : task.id,
+                    )
+                  }
                   key={task.id}
                   task={task}
                 />
